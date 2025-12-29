@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Models (large files)
+models/*.bin
+models/*.safetensors
+models/*.index
+models/*.pkl
+models/vector_db*
+
+# Data (if large)
+data/*.jpg
+data/*.png
+data/*.jpeg
+data/images_flat/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Gradio
+gradio_cached_examples/
+
+# Kaggle
+.kaggle/
+

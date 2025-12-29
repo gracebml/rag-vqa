@@ -7,7 +7,11 @@ from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAnd
 from typing import List, Optional, Dict
 import logging
 
-from .config import QWEN2VL_MODEL_NAME, USE_PADDLE_OCR, PADDLE_OCR_LANG, DEVICE
+# Support both relative and absolute imports (for Kaggle notebook)
+try:
+    from .config import USE_PADDLE_OCR, PADDLE_OCR_LANG, DEVICE
+except ImportError:
+    from config import USE_PADDLE_OCR, PADDLE_OCR_LANG, DEVICE
 
 logger = logging.getLogger(__name__)
 
@@ -15,14 +19,27 @@ logger = logging.getLogger(__name__)
 class VisionModule:
     """Module for vision-to-text conversion: Captioning and OCR"""
     
-    def __init__(self, model_name: str = QWEN2VL_MODEL_NAME, use_4bit: bool = True):
+    def __init__(self, model_name: str = None, use_4bit: bool = True):
         """
         Initialize vision module with Qwen2VL
         
         Args:
-            model_name: HuggingFace model name for Qwen2VL
+            model_name: HuggingFace model name for Qwen2VL (default from config)
             use_4bit: Whether to use 4-bit quantization (recommended for T4 GPU)
         """
+        # Use default from config if None
+        if model_name is None:
+            try:
+                try:
+                    from .config import QWEN2VL_MODEL_NAME
+                except ImportError:
+                    from config import QWEN2VL_MODEL_NAME
+                model_name = QWEN2VL_MODEL_NAME
+            except (ImportError, NameError):
+                # Fallback if config import fails
+                model_name = "Qwen/Qwen2-VL-7B-Instruct"
+                logger.warning(f"Could not import QWEN2VL_MODEL_NAME from config, using default: {model_name}")
+        
         logger.info(f"Loading Qwen2VL model: {model_name}")
         logger.info(f"4-bit quantization: {use_4bit}")
         

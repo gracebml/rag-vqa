@@ -3,14 +3,21 @@ Answering Module: Generate answers using Qwen2VL with 4-bit quantization
 """
 import torch
 from PIL import Image
-from transformers import Qwen2VLForConditionalGeneration, Qwen2VLProcessor, BitsAndBytesConfig
+from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig
+from qwen_vl_utils import process_vision_info
 from typing import List, Dict, Optional
 import logging
 
-from .config import (
-    QWEN2VL_MODEL_NAME, QWEN2VL_4BIT, DEVICE,
-    MAX_NEW_TOKENS, TEMPERATURE, TOP_P
-)
+# Support both relative and absolute imports (for Kaggle notebook)
+# Note: QWEN2VL_MODEL_NAME and QWEN2VL_4BIT are imported in __init__ to handle None cases
+try:
+    from .config import (
+        DEVICE, MAX_NEW_TOKENS, TEMPERATURE, TOP_P
+    )
+except ImportError:
+    from config import (
+        DEVICE, MAX_NEW_TOKENS, TEMPERATURE, TOP_P
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -20,39 +27,59 @@ class AnsweringModule:
     
     def __init__(
         self,
-        model_name: str = QWEN2VL_MODEL_NAME,
-        use_4bit: bool = QWEN2VL_4BIT
+        model_name: str = None,
+        use_4bit: bool = None
     ):
         """
         Initialize answering module with Qwen2VL
         
         Args:
-            model_name: HuggingFace model name
-            use_4bit: Whether to use 4-bit quantization (for T4 GPU)
+            model_name: HuggingFace model name (default from config)
+            use_4bit: Whether to use 4-bit quantization (default from config)
         """
+        # Use defaults from config if None
+        if model_name is None:
+            try:
+                try:
+                    from .config import QWEN2VL_MODEL_NAME
+                except ImportError:
+                    from config import QWEN2VL_MODEL_NAME
+                model_name = QWEN2VL_MODEL_NAME
+            except (ImportError, NameError):
+                # Fallback if config import fails
+                model_name = "Qwen/Qwen2-VL-7B-Instruct"
+                logger.warning(f"Could not import QWEN2VL_MODEL_NAME from config, using default: {model_name}")
+        
+        if use_4bit is None:
+            try:
+                try:
+                    from .config import QWEN2VL_4BIT
+                except ImportError:
+                    from config import QWEN2VL_4BIT
+                use_4bit = QWEN2VL_4BIT
+            except (ImportError, NameError):
+                # Fallback if config import fails
+                use_4bit = True
+                logger.warning(f"Could not import QWEN2VL_4BIT from config, using default: {use_4bit}")
+        
         logger.info(f"Loading Qwen2VL model: {model_name}")
         logger.info(f"4-bit quantization: {use_4bit}")
-        
-        # Load processor
-        self.processor = Qwen2VLProcessor.from_pretrained(
-            model_name,
-            trust_remote_code=True
-        )
         
         # Configure quantization if needed
         quantization_config = None
         if use_4bit:
             quantization_config = BitsAndBytesConfig(
                 load_in_4bit=True,
-                bnb_4bit_compute_dtype=torch.bfloat16,
+                bnb_4bit_compute_dtype=torch.float16,  # Use float16 like notebook
                 bnb_4bit_use_double_quant=True,
                 bnb_4bit_quant_type="nf4"
             )
         
-        # Load model
+        # Load model first (needed for processor initialization)
         model_kwargs = {
             "trust_remote_code": True,
-            "device_map": "auto"
+            "device_map": "auto",
+            "attn_implementation": "sdpa"  # Use efficient attention like notebook
         }
         
         if use_4bit:
@@ -66,7 +93,23 @@ class AnsweringModule:
         )
         
         self.model.eval()
+        
+        # Load processor with optimized pixel settings for memory efficiency
+        # The default range for visual tokens is 4-16384. Setting min_pixels and max_pixels
+        # to a token count range of 256-1280 balances speed and memory usage.
+        min_pixels = 256 * 28 * 28
+        max_pixels = 640 * 28 * 28
+        
+        self.processor = AutoProcessor.from_pretrained(
+            model_name,
+            min_pixels=min_pixels,
+            max_pixels=max_pixels,
+            trust_remote_code=True
+        )
+        
         logger.info("Answering module loaded successfully")
+        if use_4bit:
+            logger.info("Model loaded with 4-bit quantization (~6GB VRAM)")
     
     def format_context(self, retrieved_docs: List[Dict]) -> str:
         """
@@ -165,26 +208,26 @@ class AnsweringModule:
         ]
         
         try:
+            # Apply chat template
             text = self.processor.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
             
-            # Extract images from messages
-            images = []
-            for msg in messages:
-                if isinstance(msg.get("content"), list):
-                    for content in msg["content"]:
-                        if content.get("type") == "image":
-                            images.append(content["image"])
+            # Process vision info using qwen_vl_utils (like notebook)
+            image_inputs, video_inputs = process_vision_info(messages)
             
+            # Process inputs with processor
             inputs = self.processor(
                 text=[text],
-                images=images if images else None,
+                images=image_inputs,
+                videos=video_inputs,
                 padding=True,
                 return_tensors="pt"
             )
-            # Move to device
-            inputs = {k: v.to(DEVICE) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
+            
+            # Move to device (use cuda directly like notebook, fallback to DEVICE config)
+            device = "cuda" if torch.cuda.is_available() else DEVICE
+            inputs = {k: v.to(device) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
             
             with torch.no_grad():
                 generated_ids = self.model.generate(

@@ -104,20 +104,7 @@ Chạy notebook `notebooks/1_Build_Index.ipynb` trên Kaggle để:
 - Điều chỉnh đường dẫn trong notebook
 - Output sẽ được lưu trong `/kaggle/working/models/`
 
-### 2. Inference trên ảnh mẫu
-
-Chạy notebook `notebooks/3_Inference_Sample.ipynb` để:
-- Chạy inference trên các ảnh mẫu
-- Test hệ thống với câu hỏi tùy chỉnh
-- Xem kết quả chi tiết (caption, OCR, retrieved context)
-
-**Lưu ý**:
-- Upload source code (`code/src/`) lên Kaggle Dataset
-- Upload `knowledge_base.json` và thư mục ảnh lên Kaggle Dataset
-- Điều chỉnh đường dẫn trong notebook
-- Xem hướng dẫn chi tiết trong `notebooks/KAGGLE_INFERENCE_GUIDE.md`
-
-### 3. Evaluate
+### 2. Evaluate
 
 Chạy notebook `notebooks/2_Evaluate.ipynb` để:
 - Đánh giá hệ thống trên tập test

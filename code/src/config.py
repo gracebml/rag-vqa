@@ -22,6 +22,7 @@ else:
     MODELS_DIR = BASE_DIR / "models"
 
 # Model configurations
+
 QWEN2VL_MODEL_NAME = "Qwen/Qwen2-VL-7B-Instruct"
 QWEN2VL_4BIT = True  # Use 4-bit quantization for T4 GPU
 

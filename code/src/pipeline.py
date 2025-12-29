@@ -37,6 +37,31 @@ class RAGVQAPipeline:
         logger.info("Initializing RAG-VQA Pipeline...")
         
         # Initialize modules
+        # Use default from config if None is passed
+        if vision_model_name is None:
+            try:
+                try:
+                    from .config import QWEN2VL_MODEL_NAME
+                except ImportError:
+                    from config import QWEN2VL_MODEL_NAME
+                vision_model_name = QWEN2VL_MODEL_NAME
+            except (ImportError, NameError):
+                # Fallback if config import fails
+                vision_model_name = "Qwen/Qwen2-VL-7B-Instruct"
+                logger.warning(f"Could not import QWEN2VL_MODEL_NAME from config, using default: {vision_model_name}")
+        
+        if answering_model_name is None:
+            try:
+                try:
+                    from .config import QWEN2VL_MODEL_NAME
+                except ImportError:
+                    from config import QWEN2VL_MODEL_NAME
+                answering_model_name = QWEN2VL_MODEL_NAME
+            except (ImportError, NameError):
+                # Fallback if config import fails
+                answering_model_name = "Qwen/Qwen2-VL-7B-Instruct"
+                logger.warning(f"Could not import QWEN2VL_MODEL_NAME from config, using default: {answering_model_name}")
+        
         self.vision_module = VisionModule(model_name=vision_model_name, use_4bit=use_4bit)
         # Pass vision_module to retrieval_module for VLM-based keyword generation
         self.retrieval_module = RetrievalModule(vision_module=self.vision_module)

@@ -25,7 +25,6 @@ wheels/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-*.ipynb
 
 # Models (large files)
 models/*.bin
@@ -46,6 +45,7 @@ data/images_flat/
 *.swp
 *.swo
 *~
+*.zip
 
 # OS
 .DS_Store

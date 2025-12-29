@@ -58,9 +58,12 @@ else:
     VECTOR_DB_PATH = MODELS_DIR / "vector_db"
 
 # Generation parameters
-MAX_NEW_TOKENS = 512
+MAX_NEW_TOKENS = 256
 TEMPERATURE = 0.7
 TOP_P = 0.9
+REPETITION_PENALTY = 1.15
+NO_REPEAT_NGRAM_SIZE = 4
+
 
 # Device
 try:

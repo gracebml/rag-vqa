@@ -10,19 +10,11 @@ import logging
 import numpy as np
 import re
 
-# Support both relative and absolute imports (for Kaggle notebook)
-try:
-    from .config import (
-        KB_JSON_PATH, RETRIEVAL_METHOD, TOP_K_RETRIEVE,
-        BM25_K1, BM25_B, WIKIPEDIA_LANG, WIKIPEDIA_FALLBACK,
-        VIETNAMESE_EMBEDDING_MODEL
-    )
-except ImportError:
-    from config import (
-        KB_JSON_PATH, RETRIEVAL_METHOD, TOP_K_RETRIEVE,
-        BM25_K1, BM25_B, WIKIPEDIA_LANG, WIKIPEDIA_FALLBACK,
-        VIETNAMESE_EMBEDDING_MODEL
-    )
+from .config import (
+    KB_JSON_PATH, RETRIEVAL_METHOD, TOP_K_RETRIEVE,
+    BM25_K1, BM25_B, WIKIPEDIA_LANG, WIKIPEDIA_FALLBACK,
+    VIETNAMESE_EMBEDDING_MODEL
+)
 
 logger = logging.getLogger(__name__)
 
@@ -269,11 +261,7 @@ class RetrievalModule:
             
             # Move to device
             import torch
-            # Support both relative and absolute imports
-            try:
-                from .config import DEVICE
-            except ImportError:
-                from config import DEVICE
+            from .config import DEVICE
             # Handle device for models with device_map="auto"
             if hasattr(self.vision_module.model, 'device'):
                 device = self.vision_module.model.device

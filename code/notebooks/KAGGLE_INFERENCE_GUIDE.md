@@ -2,7 +2,7 @@
 
 Hướng dẫn chi tiết để push code và chạy inference trên Kaggle.
 
-## 📋 Chuẩn bị
+##  Chuẩn bị
 
 ### 1. Chuẩn bị dữ liệu cần upload lên Kaggle
 
@@ -45,7 +45,7 @@ Bạn cần tạo các Kaggle Datasets sau:
   - `vector_db_metadata.pkl`
   - `vector_db_config.json`
 
-## 🚀 Các bước thực hiện
+##  Các bước thực hiện
 
 ### Bước 1: Tạo Kaggle Datasets
 
@@ -184,7 +184,7 @@ test_image_name = "your_image.jpg"
 test_question = "Câu hỏi của bạn"
 ```
 
-## 💡 Tips
+##  Tips
 
 1. **Tối ưu thời gian chạy**:
    - Build vector index trước (notebook `1_Build_Index.ipynb`)
@@ -202,7 +202,7 @@ test_question = "Câu hỏi của bạn"
    - Có thể public notebook để người khác sử dụng
    - Nhớ public các datasets cần thiết
 
-## 📊 Output
+##  Output
 
 Sau khi chạy xong, bạn sẽ có:
 - `inference_results.json`: Kết quả chi tiết dạng JSON

@@ -46,6 +46,7 @@ data/images_flat/
 *.swo
 *~
 *.zip
+*.Zone.Identifier
 
 # OS
 .DS_Store

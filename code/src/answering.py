@@ -156,7 +156,9 @@ class AnsweringModule:
         context: str,
         max_new_tokens: int = MAX_NEW_TOKENS,
         temperature: float = TEMPERATURE,
-        top_p: float = TOP_P
+        top_p: float = TOP_P,
+        repetition_penalty: float = REPETITION_PENALTY,
+        no_repeat_ngram_size: int = NO_REPEAT_NGRAM_SIZE
     ) -> str:
         """
         Generate answer using Qwen2VL with RAG context
@@ -235,7 +237,9 @@ class AnsweringModule:
                     max_new_tokens=max_new_tokens,
                     temperature=temperature,
                     top_p=top_p,
-                    do_sample=temperature > 0
+                    do_sample=temperature > 0,
+                    repetition_penalty=repetition_penalty,
+                    no_repeat_ngram_size=no_repeat_ngram_size
                 )
             
             generated_ids_trimmed = [

@@ -34,3 +34,14 @@ tqdm>=4.65.0
 jupyter>=1.0.0
 ipykernel>=6.25.0
 
+# EVALUATION METRICS 
+
+# BERTScore for semantic similarity evaluation
+bert-score>=0.3.13
+
+# Gemini API for LLM-as-a-Judge evaluation
+google-generativeai>=0.3.0
+
+# For visualization (optional)
+matplotlib>=3.7.0
+seaborn>=0.12.0

@@ -76,3 +76,34 @@ except ImportError:
 # Logging
 LOG_LEVEL = "INFO"
 
+
+# EVALUATION METRICS CONFIGURATION (
+
+# BERTScore configuration
+BERTSCORE_MODEL = "bert-base-multilingual-cased"
+# Alternative models for Vietnamese:
+# - "xlm-roberta-base" (better but slower)
+# - "vinai/phobert-base" (Vietnamese specific)
+
+# LLM-as-a-Judge configuration
+GEMINI_MODEL = "gemini-1.5-flash"  # Free tier model
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", None)  # Set via environment variable
+LLM_JUDGE_DELAY = 1.0  # Delay between API calls (seconds) to avoid rate limit
+
+# Evaluation output paths
+if IS_KAGGLE:
+    EVAL_OUTPUT_DIR = BASE_DIR / "results"
+else:
+    EVAL_OUTPUT_DIR = BASE_DIR / "results"
+
+EVAL_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Evaluation settings
+EVAL_USE_BERT_SCORE = True
+EVAL_USE_LLM_JUDGE = True  # Set to False if no API key
+EVAL_MAX_SAMPLES = None  # Set to int to limit samples, None for all
+
+# Results filenames
+PREDICTIONS_FILE = "predictions.json"
+EVALUATION_RESULTS_FILE = "evaluation_results.json"
+EVALUATION_METRICS_FILE = "metrics_summary.json"

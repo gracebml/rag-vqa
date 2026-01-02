@@ -2,45 +2,41 @@
 Vision Module: Image Captioning and OCR using Qwen2VL
 """
 import torch
+import numpy as np
 from PIL import Image
 from transformers import Qwen2VLForConditionalGeneration, AutoProcessor, BitsAndBytesConfig
 from typing import List, Optional, Dict
 import logging
 
-from .config import QWEN2VL_MODEL_NAME, USE_PADDLE_OCR, PADDLE_OCR_LANG, DEVICE
+from .config import QWEN2VL_MODEL_NAME, DEVICE
 
 logger = logging.getLogger(__name__)
 
-
 class VisionModule:
-    """Module for vision-to-text conversion: Captioning and OCR"""
+    """Module for vision-to-text conversion: Captioning and OCR using a unified Qwen2VL model"""
     
     def __init__(self, model_name: str = QWEN2VL_MODEL_NAME, use_4bit: bool = True):
         """
-        Initialize vision module with Qwen2VL
-        
-        Args:
-            model_name: HuggingFace model name for Qwen2VL
-            use_4bit: Whether to use 4-bit quantization (recommended for T4 GPU)
+        Initialize vision module with Qwen2VL for both Captioning and OCR
         """
         logger.info(f"Loading Qwen2VL model: {model_name}")
         logger.info(f"4-bit quantization: {use_4bit}")
         
-        # Configure quantization if needed
+        # Configure quantization
         quantization_config = None
         if use_4bit:
             quantization_config = BitsAndBytesConfig(
-                load_in_4bit=True,              # Enable 4-bit quantization
-                bnb_4bit_use_double_quant=True, # Double quantization to save more memory
-                bnb_4bit_quant_type="nf4",      # NF4 data type optimized for LLM
-                bnb_4bit_compute_dtype=torch.float16  # Compute in float16 for speed
+                load_in_4bit=True,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16
             )
         
-        # Load model with quantization if enabled
+        # Load model
         model_kwargs = {
             "trust_remote_code": True,
             "device_map": "auto",
-            "attn_implementation": "sdpa"  # Use PyTorch's efficient attention
+            "attn_implementation": "sdpa"
         }
         
         if use_4bit:
@@ -55,9 +51,7 @@ class VisionModule:
         
         self.model.eval()
         
-        # Load processor with optimized pixel settings for memory efficiency
-        # The default range for visual tokens is 4-16384. Setting min_pixels and max_pixels
-        # to a token count range of 256-1280 balances speed and memory usage.
+        # Load processor
         min_pixels = 256 * 28 * 28
         max_pixels = 640 * 28 * 28
         
@@ -68,81 +62,33 @@ class VisionModule:
             trust_remote_code=True
         )
         
-        logger.info("Vision module loaded successfully")
-        if use_4bit:
-            logger.info("Model loaded with 4-bit quantization (~6GB VRAM)")
-        
-        # Initialize OCR
-        self.ocr_engine = None
-        if USE_PADDLE_OCR:
-            try:
-                from paddleocr import PaddleOCR
-                self.ocr_engine = PaddleOCR(use_angle_cls=True, lang=PADDLE_OCR_LANG)
-                logger.info("PaddleOCR initialized")
-            except ImportError:
-                logger.warning("PaddleOCR not available, falling back to Tesseract")
-                self._init_tesseract()
-        else:
-            self._init_tesseract()
-    
-    def _init_tesseract(self):
-        """Initialize Tesseract OCR"""
-        try:
-            import pytesseract
-            from PIL import Image
-            self.ocr_engine = "tesseract"
-            logger.info("Tesseract OCR initialized")
-        except ImportError:
-            logger.warning("Tesseract not available, OCR will be disabled")
-            self.ocr_engine = None
-    
-    def generate_caption(self, image: Image.Image, max_new_tokens: int = 256) -> str:
-        """
-        Generate Vietnamese caption for image using Qwen2VL
-        
-        Args:
-            image: PIL Image object
-            max_new_tokens: Maximum tokens to generate
-            
-        Returns:
-            Vietnamese caption string
-        """
+        logger.info("Vision module loaded successfully (Unified Qwen2VL)")
+
+    def _generate_response(self, image: Image.Image, prompt_text: str, max_new_tokens: int = 512) -> str:
+        """Helper method to handle Qwen2VL generation logic"""
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "image",
-                        "image": image,
-                    },
-                    {
-                        "type": "text",
-                        "text": "Hãy mô tả chi tiết hình ảnh này bằng tiếng Việt. Bao gồm các đối tượng, hành động, bối cảnh, và các chi tiết quan trọng khác. Nếu nhận thấy đây là công trình hay đặc điểm văn hóa ở Việt Nam, hãy nêu tên công trình hoặc đặc điểm văn hóa đó bên cạnh mô tả hình ảnh.",
-                    },
+                    {"type": "image", "image": image},
+                    {"type": "text", "text": prompt_text},
                 ],
             }
         ]
         
         try:
-            text = self.processor.apply_chat_template(
+            text_prompt = self.processor.apply_chat_template(
                 messages, tokenize=False, add_generation_prompt=True
             )
             
-            # Extract images from messages
-            images = []
-            for msg in messages:
-                if isinstance(msg.get("content"), list):
-                    for content in msg["content"]:
-                        if content.get("type") == "image":
-                            images.append(content["image"])
+            image_inputs = [msg["content"][0]["image"] for msg in messages]
             
             inputs = self.processor(
-                text=[text],
-                images=images if images else None,
+                text=[text_prompt],
+                images=image_inputs,
                 padding=True,
                 return_tensors="pt"
             )
-            # Move to device
             inputs = {k: v.to(DEVICE) if isinstance(v, torch.Tensor) else v for k, v in inputs.items()}
             
             with torch.no_grad():
@@ -166,51 +112,45 @@ class VisionModule:
             return response.strip()
             
         except Exception as e:
-            logger.error(f"Error generating caption: {e}")
-            return "Không thể tạo mô tả cho hình ảnh này."
-    
+            logger.error(f"Error during Qwen2VL generation: {e}")
+            return ""
+
+    def generate_caption(self, image: Image.Image) -> str:
+        """Generate Vietnamese caption"""
+        prompt = (
+            "Hãy mô tả chi tiết hình ảnh này bằng tiếng Việt. "
+            "Bao gồm các đối tượng, hành động, bối cảnh. "
+            "Nếu là địa danh nổi tiếng ở Việt Nam, hãy nêu tên cụ thể."
+        )
+        return self._generate_response(image, prompt, max_new_tokens=256)
+
     def extract_ocr(self, image: Image.Image) -> str:
         """
-        Extract text from image using OCR
-        
-        Args:
-            image: PIL Image object
-            
-        Returns:
-            Extracted text string
+        Extract and clean text from image using Qwen2VL.
+        Combines extraction and correction in one pass.
         """
-        if self.ocr_engine is None:
-            return ""
+        prompt = (
+            "Đọc và trích xuất toàn bộ văn bản tiếng Việt xuất hiện trong hình ảnh này. "
+            "Yêu cầu:\n"
+            "1. Chỉ xuất ra nội dung văn bản tìm thấy.\n"
+            "2. Tự động sửa các lỗi chính tả hoặc thay những ký tự lạ bằng những ký tự Tiếng Việt tương tự\n"
+            "3. Nếu không có văn bản hoặc văn bản không có ý nghĩa, hãy trả về 'NO_TEXT'.\n"
+            "4. Không thêm lời dẫn, chỉ trả về văn bản."
+        )
         
-        try:
-            if USE_PADDLE_OCR and isinstance(self.ocr_engine, type):
-                # PaddleOCR
-                result = self.ocr_engine.ocr(image, cls=True)
-                if result and result[0]:
-                    texts = [line[1][0] for line in result[0]]
-                    return " ".join(texts)
-                return ""
-            else:
-                # Tesseract
-                import pytesseract
-                text = pytesseract.image_to_string(image, lang='vie')
-                return text.strip()
-                
-        except Exception as e:
-            logger.error(f"Error in OCR: {e}")
+        logger.info("Running Unified OCR extraction...")
+        result = self._generate_response(image, prompt, max_new_tokens=512)
+        
+        if "NO_TEXT" in result or not result.strip():
+            logger.info("No meaningful text found.")
             return ""
-    
+            
+        logger.info(f"OCR Result: {result[:100]}...")
+        return result
+
     def process_image(self, image: Image.Image) -> Dict[str, str]:
-        """
-        Process image to get both caption and OCR text
-        
-        Args:
-            image: PIL Image object
-            
-        Returns:
-            Dictionary with 'caption' and 'ocr' keys
-        """
-        logger.info("Processing image: generating caption and OCR")
+        """Process image to get both caption and OCR text"""
+        logger.info("Processing image...")
         
         caption = self.generate_caption(image)
         ocr_text = self.extract_ocr(image)
@@ -219,4 +159,3 @@ class VisionModule:
             "caption": caption,
             "ocr": ocr_text
         }
-

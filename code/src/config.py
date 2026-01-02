@@ -31,8 +31,6 @@ VIETNAMESE_EMBEDDING_MODEL = "keepitreal/vietnamese-sbert"
 # Alternative: "bkai-foundation-models/vietnamese-bi-encoder"
 
 # OCR configuration
-USE_PADDLE_OCR = True  # Set False to use Tesseract
-PADDLE_OCR_LANG = "vietnamese"
 
 # RAG configuration
 RETRIEVAL_METHOD = "hybrid"  # "bm25", "embedding", or "hybrid"
